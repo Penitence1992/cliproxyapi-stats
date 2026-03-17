@@ -1,0 +1,54 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Build and package
+        run: bash scripts/package-app.sh ${{ steps.version.outputs.VERSION }}
+
+      - name: Generate release notes from commits
+        id: changelog
+        run: |
+          # Get previous tag
+          PREV_TAG=$(git tag --sort=-version:refname | head -2 | tail -1)
+          if [ -z "$PREV_TAG" ] || [ "$PREV_TAG" = "${GITHUB_REF#refs/tags/}" ]; then
+            # First release - use all commits
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges)
+          else
+            CHANGELOG=$(git log "${PREV_TAG}..HEAD" --pretty=format:"- %s (%h)" --no-merges)
+          fi
+
+          # Write to file to preserve multiline
+          echo "$CHANGELOG" > /tmp/changelog.md
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: CliproxyAPIStats-${{ steps.version.outputs.VERSION }}-macOS.zip
+          body_path: /tmp/changelog.md
+          draft: false
+          prerelease: false
+          generate_release_notes: false
