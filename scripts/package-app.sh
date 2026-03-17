@@ -6,6 +6,7 @@ BUNDLE_ID="com.cliproxyapi.stats"
 BINARY_NAME="CliproxyAPIStats"
 VERSION="${1:-1.0.0}"
 
+ICON_SOURCE="CliproxyAPIStats/icon.png"
 BUILD_DIR="CliproxyAPIStats/.build/release"
 APP_DIR="${APP_NAME}.app"
 CONTENTS_DIR="${APP_DIR}/Contents"
@@ -18,14 +19,31 @@ cd CliproxyAPIStats
 swift build -c release
 cd ..
 
+# Generate .icns from icon.png
+echo "Generating app icon..."
+ICONSET_DIR="AppIcon.iconset"
+rm -rf "${ICONSET_DIR}"
+mkdir -p "${ICONSET_DIR}"
+
+for SIZE in 16 32 64 128 256 512; do
+    sips -z ${SIZE} ${SIZE} "${ICON_SOURCE}" --out "${ICONSET_DIR}/icon_${SIZE}x${SIZE}.png" >/dev/null
+    DOUBLE=$((SIZE * 2))
+    sips -z ${DOUBLE} ${DOUBLE} "${ICON_SOURCE}" --out "${ICONSET_DIR}/icon_${SIZE}x${SIZE}@2x.png" >/dev/null
+done
+
+iconutil -c icns "${ICONSET_DIR}" -o AppIcon.icns
+rm -rf "${ICONSET_DIR}"
+
 # Create .app bundle structure
 echo "Creating app bundle..."
 rm -rf "${APP_DIR}"
 mkdir -p "${MACOS_DIR}"
 mkdir -p "${RESOURCES_DIR}"
 
-# Copy binary
+# Copy binary and icon
 cp "${BUILD_DIR}/${BINARY_NAME}" "${MACOS_DIR}/${BINARY_NAME}"
+cp AppIcon.icns "${RESOURCES_DIR}/AppIcon.icns"
+rm -f AppIcon.icns
 
 # Create Info.plist
 cat > "${CONTENTS_DIR}/Info.plist" << PLIST
@@ -51,6 +69,8 @@ cat > "${CONTENTS_DIR}/Info.plist" << PLIST
     <string>13.0</string>
     <key>LSUIElement</key>
     <true/>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>NSHighResolutionCapable</key>
     <true/>
 </dict>
