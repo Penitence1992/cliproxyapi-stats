@@ -57,6 +57,11 @@ cat > "${CONTENTS_DIR}/Info.plist" << PLIST
 </plist>
 PLIST
 
+# Ad-hoc code sign (prevents "damaged" error on download)
+echo "Code signing (ad-hoc)..."
+codesign --force --deep --sign - "${APP_DIR}"
+codesign --verify "${APP_DIR}"
+
 # Zip for distribution
 echo "Creating zip archive..."
 ZIP_NAME="CliproxyAPIStats-${VERSION}-macOS.zip"
