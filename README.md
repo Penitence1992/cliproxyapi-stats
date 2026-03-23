@@ -2,6 +2,8 @@
 
 macOS 菜单栏应用，实时监控 Claude 和 ChatGPT/Codex 账号的 API 额度使用情况。
 
+> 本项目为 [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI) 的配套监控工具。CLIProxyAPI 是一个多账号 API 代理服务，将多个 Claude / ChatGPT 账号统一为标准 OpenAI 接口对外提供服务。
+
 ## 功能
 
 - **多账号监控**：同时监控多个 Claude / ChatGPT / Codex 账号
