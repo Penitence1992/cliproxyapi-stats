@@ -80,3 +80,39 @@ struct Credits: Codable, Sendable {
         case unlimited
     }
 }
+
+// MARK: - Claude OAuth Usage
+
+struct ClaudeWindowInfo: Codable, Sendable {
+    let utilization: Double
+    let resetsAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case utilization
+        case resetsAt = "resets_at"
+    }
+
+    var usedPercent: Int { Int(utilization.rounded()) }
+
+    var formattedResetTime: String {
+        guard let resetDate = DateParsing.parseDate(resetsAt) else { return "-" }
+        let seconds = Int(resetDate.timeIntervalSinceNow)
+        guard seconds > 0 else { return "0m" }
+        let days = seconds / 86400
+        let hours = (seconds % 86400) / 3600
+        let minutes = (seconds % 3600) / 60
+        if days > 0 { return "\(days)d\(hours)h" }
+        if hours > 0 { return "\(hours)h\(minutes)m" }
+        return "\(minutes)m"
+    }
+}
+
+struct ClaudeUsageResponse: Codable, Sendable {
+    let fiveHour: ClaudeWindowInfo?
+    let sevenDay: ClaudeWindowInfo?
+
+    enum CodingKeys: String, CodingKey {
+        case fiveHour = "five_hour"
+        case sevenDay = "seven_day"
+    }
+}

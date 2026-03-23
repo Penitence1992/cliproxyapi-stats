@@ -20,7 +20,7 @@ struct AccountUsage: Identifiable, Sendable {
     }
 
     init(account: Account, usage: UsageResponse) {
-        self.id = account.accountId
+        self.id = "\(account.email)|\(account.type)"
         self.email = account.email
         self.maskedEmail = account.maskedEmail
         self.type = account.type
@@ -34,8 +34,23 @@ struct AccountUsage: Identifiable, Sendable {
         self.error = nil
     }
 
+    init(account: Account, claudeUsage: ClaudeUsageResponse) {
+        self.id = "\(account.email)|\(account.type)"
+        self.email = account.email
+        self.maskedEmail = account.maskedEmail
+        self.type = account.type
+        self.planType = "claude"
+        self.primaryUsedPercent = claudeUsage.fiveHour?.usedPercent ?? 0
+        self.secondaryUsedPercent = claudeUsage.sevenDay?.usedPercent
+        self.primaryResetTime = claudeUsage.fiveHour?.formattedResetTime ?? "-"
+        self.secondaryResetTime = claudeUsage.sevenDay?.formattedResetTime
+        self.codeReviewUsedPercent = nil
+        self.limitReached = (claudeUsage.fiveHour?.usedPercent ?? 0) >= 100
+        self.error = nil
+    }
+
     init(account: Account, error: String) {
-        self.id = account.accountId
+        self.id = "\(account.email)|\(account.type)"
         self.email = account.email
         self.maskedEmail = account.maskedEmail
         self.type = account.type

@@ -2,16 +2,16 @@ import Foundation
 
 struct Account: Codable, Identifiable, Sendable {
     let accessToken: String
-    let accountId: String
-    let disabled: Bool
+    let accountId: String?
+    let disabled: Bool?
     let email: String
-    let expired: String
+    let expired: String?
     let idToken: String
     let lastRefresh: String
     let refreshToken: String
     let type: String
 
-    var id: String { accountId }
+    var id: String { accountId ?? email }
 
     enum CodingKeys: String, CodingKey {
         case accessToken = "access_token"
@@ -26,9 +26,10 @@ struct Account: Codable, Identifiable, Sendable {
     }
 
     var isValid: Bool {
-        guard !disabled else { return false }
-        guard let expiredDate = DateParsing.parseDate(expired) else {
-            return false
+        guard !(disabled ?? false) else { return false }
+        guard let expiredStr = expired,
+              let expiredDate = DateParsing.parseDate(expiredStr) else {
+            return true  // 没有过期时间则视为有效
         }
         return expiredDate > Date()
     }
