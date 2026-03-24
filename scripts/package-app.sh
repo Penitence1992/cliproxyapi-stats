@@ -45,6 +45,12 @@ cp "${BUILD_DIR}/${BINARY_NAME}" "${MACOS_DIR}/${BINARY_NAME}"
 cp AppIcon.icns "${RESOURCES_DIR}/AppIcon.icns"
 rm -f AppIcon.icns
 
+# Copy SPM resources bundle (required for Bundle.module to work at runtime)
+SPM_BUNDLE="${BUILD_DIR}/${BINARY_NAME}_${BINARY_NAME}.bundle"
+if [ -d "${SPM_BUNDLE}" ]; then
+    cp -r "${SPM_BUNDLE}" "${RESOURCES_DIR}/"
+fi
+
 # Create Info.plist
 cat > "${CONTENTS_DIR}/Info.plist" << PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -82,9 +88,25 @@ echo "Code signing (ad-hoc)..."
 codesign --force --deep --sign - "${APP_DIR}"
 codesign --verify "${APP_DIR}"
 
+# Create staging dir for zip
+STAGE_DIR="CliproxyAPIStats-${VERSION}"
+rm -rf "${STAGE_DIR}"
+mkdir "${STAGE_DIR}"
+cp -r "${APP_DIR}" "${STAGE_DIR}/"
+cat > "${STAGE_DIR}/安装说明.txt" << 'README'
+如果 macOS 提示"无法打开"或"已损坏"，请在终端执行：
+
+    xattr -cr "/Applications/CliproxyAPI Stats.app"
+
+然后双击 app 即可正常打开。
+
+原因：macOS Gatekeeper 会隔离从互联网下载的未经 Apple 公证的 app。
+README
+
 # Zip for distribution
 echo "Creating zip archive..."
 ZIP_NAME="CliproxyAPIStats-${VERSION}-macOS.zip"
-ditto -c -k --keepParent "${APP_DIR}" "${ZIP_NAME}"
+ditto -c -k --keepParent "${STAGE_DIR}" "${ZIP_NAME}"
+rm -rf "${STAGE_DIR}"
 
 echo "Done! Output: ${ZIP_NAME}"

@@ -72,15 +72,21 @@ actor UsageService {
             }
 
             guard httpResponse.statusCode == 200 else {
+                let body = String(data: data, encoding: .utf8) ?? "(binary)"
+                print("[Claude] HTTP \(httpResponse.statusCode) for \(account.email): \(body)")
                 return AccountUsage(account: account, error: "HTTP \(httpResponse.statusCode)")
             }
 
-            let usage = try JSONDecoder().decode(ClaudeUsageResponse.self, from: data)
-            return AccountUsage(account: account, claudeUsage: usage)
+            do {
+                let usage = try JSONDecoder().decode(ClaudeUsageResponse.self, from: data)
+                return AccountUsage(account: account, claudeUsage: usage)
+            } catch let decodeError as DecodingError {
+                let body = String(data: data, encoding: .utf8) ?? "(binary)"
+                print("[Claude] DecodingError for \(account.email): \(decodeError)\nBody: \(body)")
+                return AccountUsage(account: account, error: "Parse error")
+            }
         } catch is URLError {
             return AccountUsage(account: account, error: "Network error")
-        } catch is DecodingError {
-            return AccountUsage(account: account, error: "Parse error")
         } catch {
             return AccountUsage(account: account, error: error.localizedDescription)
         }
