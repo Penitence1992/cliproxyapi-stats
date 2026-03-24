@@ -236,6 +236,10 @@ struct SettingsDetailView: View {
         ("10 min", 600),
     ]
 
+    private var availableTypes: [String] {
+        Array(Set(viewModel.accountUsages.map(\.type))).sorted()
+    }
+
     var body: some View {
         Form {
             Section("通用") {
@@ -283,6 +287,26 @@ struct SettingsDetailView: View {
                 }
 
                 Toggle("开机自启", isOn: $viewModel.launchAtLogin)
+            }
+
+            Section("菜单栏") {
+                Toggle("混合计算所有类型", isOn: $viewModel.mixTypes)
+                    .help("开启时菜单栏显示所有账号的均值；关闭时仅显示优先类型的均值")
+
+                if !viewModel.mixTypes {
+                    HStack {
+                        Text("优先显示类型")
+                        Spacer()
+                        Picker("", selection: $viewModel.priorityType) {
+                            Text("全部").tag("")
+                            ForEach(availableTypes, id: \.self) { type in
+                                Text(type).tag(type)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .frame(maxWidth: 120)
+                    }
+                }
             }
 
             Section("计算") {
