@@ -10,7 +10,10 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "CliproxyAPIStats",
-            path: "Sources"
+            path: "Sources",
+            resources: [
+                .process("Resources")
+            ]
         )
     ]
 )
