@@ -16,9 +16,7 @@ struct MenuBarLabel: View {
         if !viewModel.mixTypes, !viewModel.priorityType.isEmpty,
            let nsImage = providerIcon(for: viewModel.priorityType) {
             Image(nsImage: nsImage)
-                .resizable()
-                .scaledToFit()
-                .frame(width: 16, height: 16)
+                .renderingMode(.template)
         } else {
             Image(systemName: "chart.bar.fill")
         }
@@ -29,6 +27,8 @@ struct MenuBarLabel: View {
             forResource: "ProviderIcon-\(type.lowercased())",
             withExtension: "svg"
         ) else { return nil }
-        return NSImage(contentsOf: url)
+        guard let image = NSImage(contentsOf: url) else { return nil }
+        image.size = NSSize(width: 14, height: 14)
+        return image
     }
 }
