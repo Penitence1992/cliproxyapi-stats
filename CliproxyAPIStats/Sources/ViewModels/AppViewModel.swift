@@ -17,6 +17,8 @@ final class AppViewModel: ObservableObject {
         didSet { updateLaunchAtLogin() }
     }
     @AppStorage("weeklyExhaustedZeroes5H") var weeklyExhaustedZeroes5H = true
+    @AppStorage("priorityType") var priorityType = ""
+    @AppStorage("mixTypes") var mixTypes = true
 
     private let accountLoader = AccountLoader()
     private let usageService = UsageService()
@@ -36,6 +38,16 @@ final class AppViewModel: ObservableObject {
         let valid = accountUsages.filter { $0.error == nil }
         guard !valid.isEmpty else { return 0 }
         return valid.map { effectivePrimaryRemaining($0) }.reduce(0, +) / valid.count
+    }
+
+    /// 菜单栏显示的剩余百分比：混合模式用全部账号均值，非混合模式用优先类型账号均值
+    var menuBarRemainingPercent: Int {
+        guard !mixTypes, !priorityType.isEmpty else {
+            return averageRemainingPercent
+        }
+        let filtered = accountUsages.filter { $0.type == priorityType && $0.error == nil }
+        guard !filtered.isEmpty else { return 0 }
+        return filtered.map { effectivePrimaryRemaining($0) }.reduce(0, +) / filtered.count
     }
 
     func effectivePrimaryRemaining(_ usage: AccountUsage) -> Int {
