@@ -45,11 +45,8 @@ cp "${BUILD_DIR}/${BINARY_NAME}" "${MACOS_DIR}/${BINARY_NAME}"
 cp AppIcon.icns "${RESOURCES_DIR}/AppIcon.icns"
 rm -f AppIcon.icns
 
-# Copy SPM resources bundle (required for Bundle.module to work at runtime)
-SPM_BUNDLE="${BUILD_DIR}/${BINARY_NAME}_${BINARY_NAME}.bundle"
-if [ -d "${SPM_BUNDLE}" ]; then
-    cp -r "${SPM_BUNDLE}" "${RESOURCES_DIR}/"
-fi
+# Copy SVG icons to Contents/Resources (Bundle.main looks here at runtime)
+find "CliproxyAPIStats/Sources/Resources" -name "*.svg" -exec cp {} "${RESOURCES_DIR}/" \; 2>/dev/null || true
 
 # Create Info.plist
 cat > "${CONTENTS_DIR}/Info.plist" << PLIST

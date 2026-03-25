@@ -23,7 +23,7 @@ struct MenuBarLabel: View {
     }
 
     private func providerIcon(for type: String) -> NSImage? {
-        guard let url = Bundle.module.url(
+        guard let url = Bundle.main.url(
             forResource: "ProviderIcon-\(type.lowercased())",
             withExtension: "svg"
         ) else { return nil }

@@ -11,9 +11,7 @@ let package = Package(
         .executableTarget(
             name: "CliproxyAPIStats",
             path: "Sources",
-            resources: [
-                .process("Resources")
-            ]
+            exclude: ["Resources"]
         )
     ]
 )
