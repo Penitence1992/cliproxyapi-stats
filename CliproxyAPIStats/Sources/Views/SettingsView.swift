@@ -316,14 +316,14 @@ struct SettingsDetailView: View {
                     HStack {
                         Text("地址")
                         Spacer()
-                        TextField("127.0.0.1", text: $viewModel.proxyHost)
+                        TextField("", text: $viewModel.proxyHost)
                             .textFieldStyle(.roundedBorder)
                             .frame(maxWidth: 160)
                     }
                     HStack {
                         Text("端口")
                         Spacer()
-                        TextField("1080", value: $viewModel.proxyPort, format: .number)
+                        TextField("", value: $viewModel.proxyPort, format: IntegerFormatStyle().grouping(.never))
                             .textFieldStyle(.roundedBorder)
                             .frame(maxWidth: 80)
                     }
