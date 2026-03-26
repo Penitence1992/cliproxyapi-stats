@@ -309,6 +309,27 @@ struct SettingsDetailView: View {
                 }
             }
 
+            Section("代理") {
+                Toggle("启用 SOCKS5 代理", isOn: $viewModel.proxyEnabled)
+
+                if viewModel.proxyEnabled {
+                    HStack {
+                        Text("地址")
+                        Spacer()
+                        TextField("127.0.0.1", text: $viewModel.proxyHost)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(maxWidth: 160)
+                    }
+                    HStack {
+                        Text("端口")
+                        Spacer()
+                        TextField("1080", value: $viewModel.proxyPort, format: .number)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(maxWidth: 80)
+                    }
+                }
+            }
+
             Section("计算") {
                 Toggle("周限额耗尽时 5H 按 0% 计算", isOn: $viewModel.weeklyExhaustedZeroes5H)
                     .help("开启后，周限额已达 100% 的账号，其 5H 剩余以 0% 参与均值计算")

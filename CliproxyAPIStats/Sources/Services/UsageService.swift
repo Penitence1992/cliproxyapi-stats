@@ -1,16 +1,33 @@
 import Foundation
 
 actor UsageService {
-    private let session: URLSession
+    private var session: URLSession
     private let chatGPTBaseURL = "https://chatgpt.com/backend-api/wham/usage"
     private let claudeBaseURL = "https://api.anthropic.com/api/oauth/usage"
     private let timeoutInterval: TimeInterval = 10
 
     init() {
+        self.session = URLSession(configuration: Self.makeConfig())
+    }
+
+    func updateProxy(host: String?, port: Int?) {
+        self.session = URLSession(configuration: Self.makeConfig(proxyHost: host, proxyPort: port))
+    }
+
+    private static func makeConfig(proxyHost: String? = nil, proxyPort: Int? = nil) -> URLSessionConfiguration {
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = 10
         config.timeoutIntervalForResource = 30
-        self.session = URLSession(configuration: config)
+
+        if let host = proxyHost, let port = proxyPort, !host.isEmpty, port > 0 {
+            config.connectionProxyDictionary = [
+                kCFNetworkProxiesSOCKSEnable: true,
+                kCFNetworkProxiesSOCKSProxy: host,
+                kCFNetworkProxiesSOCKSPort: port,
+            ]
+        }
+
+        return config
     }
 
     func fetchUsage(for account: Account) async -> AccountUsage {

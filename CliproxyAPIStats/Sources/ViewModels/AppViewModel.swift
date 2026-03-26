@@ -19,6 +19,15 @@ final class AppViewModel: ObservableObject {
     @AppStorage("weeklyExhaustedZeroes5H") var weeklyExhaustedZeroes5H = true
     @AppStorage("priorityType") var priorityType = ""
     @AppStorage("mixTypes") var mixTypes = true
+    @AppStorage("proxyEnabled") var proxyEnabled = false {
+        didSet { applyProxy() }
+    }
+    @AppStorage("proxyHost") var proxyHost = "127.0.0.1" {
+        didSet { applyProxy() }
+    }
+    @AppStorage("proxyPort") var proxyPort = 1080 {
+        didSet { applyProxy() }
+    }
 
     private let accountLoader = AccountLoader()
     private let usageService = UsageService()
@@ -67,9 +76,20 @@ final class AppViewModel: ObservableObject {
     // MARK: - Lifecycle
 
     func start() {
+        applyProxy()
         setupFileWatcher()
         startTimer()
         Task { await refresh() }
+    }
+
+    private func applyProxy() {
+        Task {
+            if proxyEnabled {
+                await usageService.updateProxy(host: proxyHost, port: proxyPort)
+            } else {
+                await usageService.updateProxy(host: nil, port: nil)
+            }
+        }
     }
 
     // MARK: - Refresh
