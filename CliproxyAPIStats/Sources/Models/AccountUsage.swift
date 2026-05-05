@@ -18,6 +18,9 @@ struct AccountUsage: Identifiable, Sendable {
     var secondaryRemainingPercent: Int? {
         secondaryUsedPercent.map { 100 - $0 }
     }
+    var isFreePlan: Bool {
+        planType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "free"
+    }
 
     init(account: Account, usage: UsageResponse) {
         self.id = "\(account.email)|\(account.type)"

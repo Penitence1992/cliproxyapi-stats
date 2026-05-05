@@ -9,7 +9,7 @@ struct ContentView: View {
             Divider()
 
             ScrollView {
-                VStack(spacing: 0) {
+                LazyVStack(spacing: 0) {
                     SummarySection(summaries: viewModel.groupSummaries)
                     Divider().padding(.horizontal)
                     AccountListSection(usages: viewModel.accountUsages)

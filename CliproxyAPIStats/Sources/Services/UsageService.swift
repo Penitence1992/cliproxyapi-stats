@@ -110,18 +110,35 @@ actor UsageService {
     }
 
     func fetchAllUsages(for accounts: [Account]) async -> [AccountUsage] {
-        await withTaskGroup(of: AccountUsage.self) { group in
-            for account in accounts {
+        let maxConcurrentRequests = 8
+
+        return await withTaskGroup(of: (Int, AccountUsage).self) { group in
+            var nextIndex = 0
+            let initialCount = min(maxConcurrentRequests, accounts.count)
+
+            for _ in 0..<initialCount {
+                let index = nextIndex
+                let account = accounts[index]
+                nextIndex += 1
                 group.addTask {
-                    await self.fetchUsage(for: account)
+                    (index, await self.fetchUsage(for: account))
                 }
             }
 
-            var results: [AccountUsage] = []
-            for await usage in group {
-                results.append(usage)
+            var results = Array<AccountUsage?>(repeating: nil, count: accounts.count)
+            while let (index, usage) = await group.next() {
+                results[index] = usage
+
+                guard nextIndex < accounts.count else { continue }
+                let nextAccountIndex = nextIndex
+                let account = accounts[nextAccountIndex]
+                nextIndex += 1
+                group.addTask {
+                    (nextAccountIndex, await self.fetchUsage(for: account))
+                }
             }
-            return results
+
+            return results.compactMap { $0 }
         }
     }
 }

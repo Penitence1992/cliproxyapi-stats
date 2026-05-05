@@ -1,28 +1,89 @@
 import SwiftUI
 
 struct AccountListSection: View {
-    let usages: [AccountUsage]
+    private let usageGroups: [AccountUsageGroup]
+
+    init(usages: [AccountUsage]) {
+        self.usageGroups = Self.makeUsageGroups(usages)
+    }
+
+    private static func makeUsageGroups(_ usages: [AccountUsage]) -> [AccountUsageGroup] {
+        var regular: [AccountUsage] = []
+        var free: [AccountUsage] = []
+        regular.reserveCapacity(usages.count)
+        free.reserveCapacity(usages.count)
+
+        for usage in usages {
+            if usage.isFreePlan {
+                free.append(usage)
+            } else {
+                regular.append(usage)
+            }
+        }
+
+        var groups: [AccountUsageGroup] = []
+        if !regular.isEmpty {
+            groups.append(AccountUsageGroup(title: "非 Free 账号", usages: regular))
+        }
+        if !free.isEmpty {
+            groups.append(AccountUsageGroup(title: "Free 账号", usages: free))
+        }
+        return groups
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        LazyVStack(alignment: .leading, spacing: 8) {
             Text("账号详情")
                 .font(.caption)
                 .fontWeight(.semibold)
                 .textCase(.uppercase)
                 .foregroundStyle(.secondary)
 
-            if usages.isEmpty {
+            if usageGroups.isEmpty {
                 Text("暂无账号")
                     .foregroundStyle(.tertiary)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 8)
             } else {
-                ForEach(usages) { usage in
-                    AccountCard(usage: usage)
+                ForEach(usageGroups) { group in
+                    AccountUsageGroupView(group: group)
                 }
             }
         }
         .padding(16)
+    }
+}
+
+private struct AccountUsageGroup: Identifiable {
+    let title: String
+    let usages: [AccountUsage]
+
+    var id: String { title }
+}
+
+private struct AccountUsageGroupView: View {
+    let group: AccountUsageGroup
+
+    var body: some View {
+        LazyVStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Text(group.title)
+                    .font(.caption2)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.secondary)
+
+                Text("\(group.usages.count) 个")
+                    .font(.system(size: 10))
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 1)
+                    .background(.quaternary)
+                    .cornerRadius(4)
+            }
+
+            ForEach(group.usages) { usage in
+                AccountCard(usage: usage)
+            }
+        }
     }
 }
 
