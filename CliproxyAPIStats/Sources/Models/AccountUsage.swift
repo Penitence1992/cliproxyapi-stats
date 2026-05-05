@@ -3,7 +3,6 @@ import Foundation
 struct AccountUsage: Identifiable, Sendable {
     let id: String
     let email: String
-    let maskedEmail: String
     let type: String
     let planType: String
     let primaryUsedPercent: Int
@@ -21,11 +20,13 @@ struct AccountUsage: Identifiable, Sendable {
     var isFreePlan: Bool {
         planType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "free"
     }
+    var isSuspectedBanned: Bool {
+        error == "HTTP 401"
+    }
 
     init(account: Account, usage: UsageResponse) {
         self.id = "\(account.email)|\(account.type)"
         self.email = account.email
-        self.maskedEmail = account.maskedEmail
         self.type = account.type
         self.planType = usage.planType
         self.primaryUsedPercent = usage.rateLimit.primaryWindow.usedPercent
@@ -40,7 +41,6 @@ struct AccountUsage: Identifiable, Sendable {
     init(account: Account, claudeUsage: ClaudeUsageResponse) {
         self.id = "\(account.email)|\(account.type)"
         self.email = account.email
-        self.maskedEmail = account.maskedEmail
         self.type = account.type
         self.planType = "claude"
         self.primaryUsedPercent = claudeUsage.fiveHour?.usedPercent ?? 0
@@ -55,7 +55,6 @@ struct AccountUsage: Identifiable, Sendable {
     init(account: Account, error: String) {
         self.id = "\(account.email)|\(account.type)"
         self.email = account.email
-        self.maskedEmail = account.maskedEmail
         self.type = account.type
         self.planType = "unknown"
         self.primaryUsedPercent = 0

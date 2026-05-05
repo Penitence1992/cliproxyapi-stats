@@ -8,13 +8,17 @@ struct AccountListSection: View {
     }
 
     private static func makeUsageGroups(_ usages: [AccountUsage]) -> [AccountUsageGroup] {
+        var suspectedBanned: [AccountUsage] = []
         var regular: [AccountUsage] = []
         var free: [AccountUsage] = []
+        suspectedBanned.reserveCapacity(usages.count)
         regular.reserveCapacity(usages.count)
         free.reserveCapacity(usages.count)
 
         for usage in usages {
-            if usage.isFreePlan {
+            if usage.isSuspectedBanned {
+                suspectedBanned.append(usage)
+            } else if usage.isFreePlan {
                 free.append(usage)
             } else {
                 regular.append(usage)
@@ -22,6 +26,9 @@ struct AccountListSection: View {
         }
 
         var groups: [AccountUsageGroup] = []
+        if !suspectedBanned.isEmpty {
+            groups.append(AccountUsageGroup(title: "*疑似封禁*", usages: suspectedBanned))
+        }
         if !regular.isEmpty {
             groups.append(AccountUsageGroup(title: "非 Free 账号", usages: regular))
         }
@@ -93,7 +100,7 @@ struct AccountCard: View {
     var body: some View {
         VStack(spacing: 8) {
             HStack {
-                Text(usage.maskedEmail)
+                Text(usage.email)
                     .font(.caption)
                     .fontWeight(.medium)
 

@@ -13,6 +13,7 @@ final class AppViewModel: ObservableObject {
     @AppStorage("refreshInterval") var refreshInterval = 300 {
         didSet { restartTimer() }
     }
+    @AppStorage("maxConcurrentRequests") var maxConcurrentRequests = 8
     @AppStorage("launchAtLogin") var launchAtLogin = true {
         didSet { updateLaunchAtLogin() }
     }
@@ -34,6 +35,7 @@ final class AppViewModel: ObservableObject {
     private var fileWatcher: FileWatcher?
     private var timerCancellable: AnyCancellable?
     private var fileWatcherDebounceTask: Task<Void, Never>?
+    private var hasStarted = false
 
     // MARK: - Computed Properties
 
@@ -76,10 +78,11 @@ final class AppViewModel: ObservableObject {
     // MARK: - Lifecycle
 
     func start() {
+        guard !hasStarted else { return }
+        hasStarted = true
         applyProxy()
         setupFileWatcher()
         startTimer()
-        Task { await refresh() }
     }
 
     private func applyProxy() {
@@ -97,7 +100,7 @@ final class AppViewModel: ObservableObject {
     func refresh() async {
         isLoading = true
         let accounts = accountLoader.loadAccounts(from: accountsDirectory)
-        let usages = await usageService.fetchAllUsages(for: accounts)
+        let usages = await usageService.fetchAllUsages(for: accounts, maxConcurrentRequests: maxConcurrentRequests)
         accountUsages = usages.sorted { $0.email < $1.email }
         lastRefreshTime = Date()
         isLoading = false

@@ -109,8 +109,8 @@ actor UsageService {
         }
     }
 
-    func fetchAllUsages(for accounts: [Account]) async -> [AccountUsage] {
-        let maxConcurrentRequests = 8
+    func fetchAllUsages(for accounts: [Account], maxConcurrentRequests: Int) async -> [AccountUsage] {
+        let maxConcurrentRequests = max(1, maxConcurrentRequests)
 
         return await withTaskGroup(of: (Int, AccountUsage).self) { group in
             var nextIndex = 0

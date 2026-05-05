@@ -165,7 +165,7 @@ struct UsageAccountRow: View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
-                    Text(usage.maskedEmail)
+                    Text(usage.email)
                         .font(.subheadline)
                         .fontWeight(.medium)
 
@@ -285,6 +285,13 @@ struct SettingsDetailView: View {
                         }
                     }
                 }
+
+                Stepper(
+                    "最大并发请求：\(viewModel.maxConcurrentRequests)",
+                    value: $viewModel.maxConcurrentRequests,
+                    in: 1...50
+                )
+                .help("手动刷新、定时刷新和文件变化刷新都会使用这个并发上限")
 
                 Toggle("开机自启", isOn: $viewModel.launchAtLogin)
             }

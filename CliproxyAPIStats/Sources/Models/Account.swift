@@ -34,17 +34,6 @@ struct Account: Codable, Identifiable, Sendable {
         return expiredDate > Date()
     }
 
-    var maskedEmail: String {
-        let parts = email.split(separator: "@")
-        guard parts.count == 2 else { return email }
-        let name = String(parts[0])
-        let domain = String(parts[1])
-        if name.count <= 4 {
-            return "\(name)***@\(domain)"
-        }
-        let prefix = name.prefix(4)
-        return "\(prefix)***@\(domain)"
-    }
 }
 
 enum DateParsing {
