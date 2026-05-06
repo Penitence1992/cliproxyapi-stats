@@ -81,17 +81,17 @@ struct UsageDetailView: View {
             Divider()
 
             ScrollView {
-                VStack(spacing: 16) {
-                    // Summaries
+                LazyVStack(spacing: 16) {
                     ForEach(viewModel.groupSummaries) { summary in
                         UsageGroupCard(summary: summary)
                     }
 
                     Divider()
 
-                    // Account list
                     ForEach(viewModel.accountUsages) { usage in
-                        UsageAccountRow(usage: usage)
+                        UsageAccountRow(usage: usage) {
+                            Task { await viewModel.refreshSingleAccount(usage.id) }
+                        }
                     }
                 }
                 .padding(20)
@@ -160,6 +160,7 @@ struct UsageMetric: View {
 
 struct UsageAccountRow: View {
     let usage: AccountUsage
+    var onRefresh: (() -> Void)?
 
     var body: some View {
         HStack(spacing: 12) {
@@ -170,10 +171,26 @@ struct UsageAccountRow: View {
                         .fontWeight(.medium)
 
                     TagView(text: usage.type, color: .purple)
-                    TagView(text: usage.planType, color: .teal)
+                    if !usage.isLoading && !usage.planType.isEmpty {
+                        TagView(text: usage.planType, color: .teal)
+                    }
+
+                    if let onRefresh {
+                        Button(action: onRefresh) {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.system(size: 10))
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(usage.isLoading)
+                    }
                 }
 
-                if let error = usage.error {
+                if usage.isLoading {
+                    Text("加载中...")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else if let error = usage.error {
                     Label(error, systemImage: "exclamationmark.triangle")
                         .font(.caption)
                         .foregroundStyle(.red)
@@ -182,7 +199,10 @@ struct UsageAccountRow: View {
 
             Spacer()
 
-            if usage.error == nil {
+            if usage.isLoading {
+                ProgressView()
+                    .controlSize(.small)
+            } else if usage.error == nil {
                 HStack(spacing: 16) {
                     VStack(alignment: .trailing, spacing: 2) {
                         Text("5H 剩余")

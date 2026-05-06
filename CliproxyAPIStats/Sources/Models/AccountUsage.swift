@@ -12,6 +12,7 @@ struct AccountUsage: Identifiable, Sendable {
     let codeReviewUsedPercent: Int?
     let limitReached: Bool
     let error: String?
+    let isLoading: Bool
 
     var primaryRemainingPercent: Int { 100 - primaryUsedPercent }
     var secondaryRemainingPercent: Int? {
@@ -36,6 +37,7 @@ struct AccountUsage: Identifiable, Sendable {
         self.codeReviewUsedPercent = usage.codeReviewRateLimit?.primaryWindow.usedPercent
         self.limitReached = usage.rateLimit.limitReached
         self.error = nil
+        self.isLoading = false
     }
 
     init(account: Account, claudeUsage: ClaudeUsageResponse) {
@@ -50,6 +52,7 @@ struct AccountUsage: Identifiable, Sendable {
         self.codeReviewUsedPercent = nil
         self.limitReached = (claudeUsage.fiveHour?.usedPercent ?? 0) >= 100
         self.error = nil
+        self.isLoading = false
     }
 
     init(account: Account, error: String) {
@@ -64,6 +67,37 @@ struct AccountUsage: Identifiable, Sendable {
         self.codeReviewUsedPercent = nil
         self.limitReached = false
         self.error = error
+        self.isLoading = false
+    }
+
+    init(loadingFrom account: Account) {
+        self.id = "\(account.email)|\(account.type)"
+        self.email = account.email
+        self.type = account.type
+        self.planType = ""
+        self.primaryUsedPercent = 0
+        self.secondaryUsedPercent = nil
+        self.primaryResetTime = ""
+        self.secondaryResetTime = nil
+        self.codeReviewUsedPercent = nil
+        self.limitReached = false
+        self.error = nil
+        self.isLoading = true
+    }
+
+    init(loadingId: String, email: String, type: String) {
+        self.id = loadingId
+        self.email = email
+        self.type = type
+        self.planType = ""
+        self.primaryUsedPercent = 0
+        self.secondaryUsedPercent = nil
+        self.primaryResetTime = ""
+        self.secondaryResetTime = nil
+        self.codeReviewUsedPercent = nil
+        self.limitReached = false
+        self.error = nil
+        self.isLoading = true
     }
 }
 
@@ -79,13 +113,12 @@ struct GroupSummary: Identifiable, Sendable {
         self.type = type
         self.accountCount = usages.count
 
-        let validUsages = usages.filter { $0.error == nil }
+        let validUsages = usages.filter { $0.error == nil && !$0.isLoading }
 
         if validUsages.isEmpty {
             self.avgPrimaryRemaining = 0
             self.avgSecondaryRemaining = nil
         } else {
-            // 5H: when weekly is exhausted, treat 5H as 0
             let primaryValues = validUsages.map { usage -> Int in
                 if weeklyExhaustedZeroes5H, (usage.secondaryRemainingPercent ?? 100) <= 0 {
                     return 0
@@ -94,7 +127,6 @@ struct GroupSummary: Identifiable, Sendable {
             }
             self.avgPrimaryRemaining = primaryValues.reduce(0, +) / primaryValues.count
 
-            // Weekly: always use actual values
             let secondaryValues = validUsages.compactMap(\.secondaryRemainingPercent)
             self.avgSecondaryRemaining = secondaryValues.isEmpty
                 ? nil

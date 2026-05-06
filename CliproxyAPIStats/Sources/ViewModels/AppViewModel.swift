@@ -36,6 +36,7 @@ final class AppViewModel: ObservableObject {
     private var timerCancellable: AnyCancellable?
     private var fileWatcherDebounceTask: Task<Void, Never>?
     private var hasStarted = false
+    private var refreshGeneration = 0
 
     // MARK: - Computed Properties
 
@@ -46,17 +47,16 @@ final class AppViewModel: ObservableObject {
     }
 
     var averageRemainingPercent: Int {
-        let valid = accountUsages.filter { $0.error == nil }
+        let valid = accountUsages.filter { $0.error == nil && !$0.isLoading }
         guard !valid.isEmpty else { return 0 }
         return valid.map { effectivePrimaryRemaining($0) }.reduce(0, +) / valid.count
     }
 
-    /// 菜单栏显示的剩余百分比：混合模式用全部账号均值，非混合模式用优先类型账号均值
     var menuBarRemainingPercent: Int {
         guard !mixTypes, !priorityType.isEmpty else {
             return averageRemainingPercent
         }
-        let filtered = accountUsages.filter { $0.type == priorityType && $0.error == nil }
+        let filtered = accountUsages.filter { $0.type == priorityType && $0.error == nil && !$0.isLoading }
         guard !filtered.isEmpty else { return 0 }
         return filtered.map { effectivePrimaryRemaining($0) }.reduce(0, +) / filtered.count
     }
@@ -83,6 +83,7 @@ final class AppViewModel: ObservableObject {
         applyProxy()
         setupFileWatcher()
         startTimer()
+        Task { await refresh() }
     }
 
     private func applyProxy() {
@@ -100,10 +101,76 @@ final class AppViewModel: ObservableObject {
     func refresh() async {
         isLoading = true
         let accounts = accountLoader.loadAccounts(from: accountsDirectory)
-        let usages = await usageService.fetchAllUsages(for: accounts, maxConcurrentRequests: maxConcurrentRequests)
-        accountUsages = usages.sorted { $0.email < $1.email }
-        lastRefreshTime = Date()
-        isLoading = false
+        let sortedAccounts = accounts.sorted { $0.email < $1.email }
+
+        refreshGeneration += 1
+        let currentGeneration = refreshGeneration
+
+        accountUsages = sortedAccounts.map { AccountUsage(loadingFrom: $0) }
+        await fetchUsagesIncrementally(sortedAccounts, generation: currentGeneration)
+
+        if currentGeneration == refreshGeneration {
+            lastRefreshTime = Date()
+            isLoading = false
+        }
+    }
+
+    func refreshSingleAccount(_ usageId: String) async {
+        let accounts = accountLoader.loadAccounts(from: accountsDirectory)
+        guard let account = accounts.first(where: { "\($0.email)|\($0.type)" == usageId }) else {
+            if let idx = accountUsages.firstIndex(where: { $0.id == usageId }) {
+                let current = accountUsages[idx]
+                accountUsages[idx] = AccountUsage(account: Account(
+                    accessToken: "", accountId: nil, disabled: false,
+                    email: current.email, expired: nil, idToken: "",
+                    lastRefresh: "", refreshToken: "", type: current.type
+                ), error: "账号文件不存在")
+            }
+            return
+        }
+
+        if let idx = accountUsages.firstIndex(where: { $0.id == usageId }) {
+            accountUsages[idx] = AccountUsage(loadingFrom: account)
+        }
+
+        let newUsage = await usageService.fetchUsage(for: account)
+
+        if let newIdx = accountUsages.firstIndex(where: { $0.id == usageId }) {
+            accountUsages[newIdx] = newUsage
+        }
+    }
+
+    private func fetchUsagesIncrementally(_ accounts: [Account], generation: Int) async {
+        let maxConcurrent = max(1, maxConcurrentRequests)
+
+        await withTaskGroup(of: (Int, AccountUsage).self) { group in
+            var nextIndex = 0
+            let initialCount = min(maxConcurrent, accounts.count)
+
+            for _ in 0..<initialCount {
+                let idx = nextIndex
+                let account = accounts[idx]
+                nextIndex += 1
+                group.addTask {
+                    (idx, await self.usageService.fetchUsage(for: account))
+                }
+            }
+
+            while let (index, usage) = await group.next() {
+                guard generation == self.refreshGeneration else { return }
+                if index < self.accountUsages.count, self.accountUsages[index].id == usage.id {
+                    self.accountUsages[index] = usage
+                }
+
+                guard nextIndex < accounts.count else { continue }
+                let nextIdx = nextIndex
+                let account = accounts[nextIdx]
+                nextIndex += 1
+                group.addTask {
+                    (nextIdx, await self.usageService.fetchUsage(for: account))
+                }
+            }
+        }
     }
 
     // MARK: - Timer
@@ -129,7 +196,6 @@ final class AppViewModel: ObservableObject {
         fileWatcher = FileWatcher(path: accountsDirectory) { [weak self] in
             Task { @MainActor in
                 guard let self else { return }
-                // Debounce: wait 1s after last change
                 self.fileWatcherDebounceTask?.cancel()
                 self.fileWatcherDebounceTask = Task {
                     try? await Task.sleep(for: .seconds(1))

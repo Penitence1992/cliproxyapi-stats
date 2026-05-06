@@ -12,7 +12,12 @@ struct ContentView: View {
                 LazyVStack(spacing: 0) {
                     SummarySection(summaries: viewModel.groupSummaries)
                     Divider().padding(.horizontal)
-                    AccountListSection(usages: viewModel.accountUsages)
+                    AccountListSection(
+                        usages: viewModel.accountUsages,
+                        onRefreshAccount: { id in
+                            Task { await viewModel.refreshSingleAccount(id) }
+                        }
+                    )
                 }
             }
 

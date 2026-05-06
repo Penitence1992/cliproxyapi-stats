@@ -2,9 +2,11 @@ import SwiftUI
 
 struct AccountListSection: View {
     private let usageGroups: [AccountUsageGroup]
+    var onRefreshAccount: ((String) -> Void)?
 
-    init(usages: [AccountUsage]) {
+    init(usages: [AccountUsage], onRefreshAccount: ((String) -> Void)? = nil) {
         self.usageGroups = Self.makeUsageGroups(usages)
+        self.onRefreshAccount = onRefreshAccount
     }
 
     private static func makeUsageGroups(_ usages: [AccountUsage]) -> [AccountUsageGroup] {
@@ -53,7 +55,7 @@ struct AccountListSection: View {
                     .padding(.vertical, 8)
             } else {
                 ForEach(usageGroups) { group in
-                    AccountUsageGroupView(group: group)
+                    AccountUsageGroupView(group: group, onRefreshAccount: onRefreshAccount)
                 }
             }
         }
@@ -70,6 +72,7 @@ private struct AccountUsageGroup: Identifiable {
 
 private struct AccountUsageGroupView: View {
     let group: AccountUsageGroup
+    var onRefreshAccount: ((String) -> Void)?
 
     var body: some View {
         LazyVStack(alignment: .leading, spacing: 8) {
@@ -88,7 +91,7 @@ private struct AccountUsageGroupView: View {
             }
 
             ForEach(group.usages) { usage in
-                AccountCard(usage: usage)
+                AccountCard(usage: usage, onRefresh: onRefreshAccount)
             }
         }
     }
@@ -96,6 +99,7 @@ private struct AccountUsageGroupView: View {
 
 struct AccountCard: View {
     let usage: AccountUsage
+    var onRefresh: ((String) -> Void)?
 
     var body: some View {
         VStack(spacing: 8) {
@@ -103,16 +107,36 @@ struct AccountCard: View {
                 Text(usage.email)
                     .font(.caption)
                     .fontWeight(.medium)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
 
                 Spacer()
 
                 HStack(spacing: 4) {
                     TagView(text: usage.type, color: .purple)
-                    TagView(text: usage.planType, color: .teal)
+                    if !usage.isLoading && !usage.planType.isEmpty {
+                        TagView(text: usage.planType, color: .teal)
+                    }
+
+                    if let onRefresh {
+                        Button {
+                            onRefresh(usage.id)
+                        } label: {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.system(size: 10))
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(usage.isLoading)
+                    }
                 }
             }
 
-            if let error = usage.error {
+            if usage.isLoading {
+                ProgressView()
+                    .controlSize(.small)
+                    .frame(maxWidth: .infinity)
+            } else if let error = usage.error {
                 HStack {
                     Image(systemName: "exclamationmark.triangle")
                         .foregroundStyle(.red)
