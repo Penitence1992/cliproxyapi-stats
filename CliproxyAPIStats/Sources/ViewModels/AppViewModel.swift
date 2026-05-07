@@ -98,6 +98,42 @@ final class AppViewModel: ObservableObject {
 
     // MARK: - Refresh
 
+    var hasFailedAccounts: Bool {
+        accountUsages.contains { $0.error != nil }
+    }
+
+    func refreshFailed() async {
+        let failedIds = accountUsages.compactMap { $0.error != nil ? $0.id : nil }
+        guard !failedIds.isEmpty else { return }
+
+        isLoading = true
+        let accounts = accountLoader.loadAccounts(from: accountsDirectory)
+
+        for usageId in failedIds {
+            guard let account = accounts.first(where: { "\($0.email)|\($0.type)" == usageId }) else { continue }
+            if let idx = accountUsages.firstIndex(where: { $0.id == usageId }) {
+                accountUsages[idx] = AccountUsage(loadingFrom: account)
+            }
+        }
+
+        await withTaskGroup(of: Void.self) { group in
+            for usageId in failedIds {
+                guard let account = accounts.first(where: { "\($0.email)|\($0.type)" == usageId }) else { continue }
+                group.addTask {
+                    let newUsage = await self.usageService.fetchUsage(for: account)
+                    await MainActor.run {
+                        if let idx = self.accountUsages.firstIndex(where: { $0.id == usageId }) {
+                            self.accountUsages[idx] = newUsage
+                        }
+                    }
+                }
+            }
+        }
+
+        lastRefreshTime = Date()
+        isLoading = false
+    }
+
     func refresh() async {
         isLoading = true
         let accounts = accountLoader.loadAccounts(from: accountsDirectory)

@@ -27,6 +27,17 @@ struct HeaderView: View {
                 .buttonStyle(.plain)
                 .disabled(viewModel.isLoading)
 
+                if viewModel.hasFailedAccounts {
+                    Button {
+                        Task { await viewModel.refreshFailed() }
+                    } label: {
+                        Image(systemName: "exclamationmark.triangle")
+                    }
+                    .buttonStyle(.plain)
+                    .help("刷新失败的账号")
+                    .disabled(viewModel.isLoading)
+                }
+
                 Button {
                     NSApplication.shared.setActivationPolicy(.regular)
                     openWindow(id: "settings")

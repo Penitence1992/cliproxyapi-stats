@@ -68,6 +68,15 @@ struct UsageDetailView: View {
                 }
                 .disabled(viewModel.isLoading)
 
+                if viewModel.hasFailedAccounts {
+                    Button {
+                        Task { await viewModel.refreshFailed() }
+                    } label: {
+                        Image(systemName: "exclamationmark.triangle")
+                    }
+                    .disabled(viewModel.isLoading)
+                }
+
                 if let time = viewModel.lastRefreshTime {
                     Text(time, style: .time)
                         .font(.caption)
