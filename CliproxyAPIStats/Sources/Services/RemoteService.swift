@@ -1,36 +1,28 @@
 import Foundation
 
 actor RemoteService {
-    private var session: URLSession
-
-    init() {
-        self.session = URLSession(configuration: Self.makeConfig())
-    }
-
-    private static func makeConfig() -> URLSessionConfiguration {
-        let config = URLSessionConfiguration.ephemeral
-        config.timeoutIntervalForRequest = 15
-        config.timeoutIntervalForResource = 30
-        return config
-    }
-
     func fetch(url urlString: String) async throws -> RemoteResponse {
-        guard let url = URL(string: urlString) else {
-            throw RemoteServiceError.invalidURL
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/curl")
+        process.arguments = ["-s", "-m", "15", "--max-time", "15", urlString]
+
+        let outputPipe = Pipe()
+        let errorPipe = Pipe()
+        process.standardOutput = outputPipe
+        process.standardError = errorPipe
+
+        try process.run()
+        process.waitUntilExit()
+
+        let data = outputPipe.fileHandleForReading.readDataToEndOfFile()
+
+        guard process.terminationStatus == 0 else {
+            let errorMsg = String(data: errorPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? "curl exit \(process.terminationStatus)"
+            throw RemoteServiceError.httpError(Int(process.terminationStatus), errorMsg)
         }
 
-        var request = URLRequest(url: url)
-        request.timeoutInterval = 15
-        request.httpShouldHandleCookies = false
-
-        let (data, response) = try await session.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
+        guard !data.isEmpty else {
             throw RemoteServiceError.invalidResponse
-        }
-
-        guard httpResponse.statusCode == 200 else {
-            throw RemoteServiceError.httpError(httpResponse.statusCode)
         }
 
         do {
@@ -44,14 +36,14 @@ actor RemoteService {
 enum RemoteServiceError: LocalizedError {
     case invalidURL
     case invalidResponse
-    case httpError(Int)
+    case httpError(Int, String)
     case parseError(String)
 
     var errorDescription: String? {
         switch self {
         case .invalidURL: return "Invalid URL"
-        case .invalidResponse: return "Invalid response"
-        case .httpError(let code): return "HTTP \(code)"
+        case .invalidResponse: return "Empty response"
+        case .httpError(let code, let msg): return "HTTP \(code): \(msg)"
         case .parseError(let msg): return "Parse error: \(msg)"
         }
     }

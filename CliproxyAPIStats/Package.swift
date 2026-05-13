@@ -11,10 +11,7 @@ let package = Package(
         .executableTarget(
             name: "CliproxyAPIStats",
             path: "Sources",
-            exclude: ["Resources"],
-            linkerSettings: [
-                .unsafeFlags(["-Xlinker", "-sectcreate", "-Xlinker", "__TEXT", "-Xlinker", "__info_plist", "-Xlinker", "Sources/Resources/Info.plist"])
-            ]
+            exclude: ["Resources"]
         )
     ]
 )
