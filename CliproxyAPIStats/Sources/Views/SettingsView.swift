@@ -89,6 +89,20 @@ struct UsageDetailView: View {
 
             Divider()
 
+            if let remoteError = viewModel.remoteError {
+                HStack {
+                    Image(systemName: "exclamationmark.triangle")
+                        .foregroundStyle(.red)
+                    Text(remoteError)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                    Spacer()
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 6)
+                Divider()
+            }
+
             ScrollView {
                 LazyVStack(spacing: 16) {
                     ForEach(viewModel.groupSummaries) { summary in

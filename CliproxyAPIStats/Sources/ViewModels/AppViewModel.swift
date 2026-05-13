@@ -8,6 +8,7 @@ final class AppViewModel: ObservableObject {
     @Published var accountUsages: [AccountUsage] = []
     @Published var isLoading = false
     @Published var lastRefreshTime: Date?
+    @Published var remoteError: String?
     @Published var remoteGroups: [GroupSummary]?
 
     @AppStorage("accountsDirectory") var accountsDirectory = "~/.cliproxyapi-stats/accounts"
@@ -30,7 +31,9 @@ final class AppViewModel: ObservableObject {
     @AppStorage("proxyPort") var proxyPort = 1080 {
         didSet { applyProxy() }
     }
-    @AppStorage("dataSourceMode") var dataSourceMode = "local"
+    @AppStorage("dataSourceMode") var dataSourceMode = "local" {
+        didSet { Task { await refresh() } }
+    }
     @AppStorage("remoteServiceURL") var remoteServiceURL = ""
 
     private let accountLoader = AccountLoader()
@@ -156,6 +159,7 @@ final class AppViewModel: ObservableObject {
         guard !url.isEmpty else {
             accountUsages = []
             remoteGroups = nil
+            remoteError = nil
             isLoading = false
             return
         }
@@ -166,9 +170,12 @@ final class AppViewModel: ObservableObject {
                 .sorted { $0.email < $1.email }
             remoteGroups = response.groups.map { GroupSummary(remoteGroup: $0) }
                 .sorted { $0.type < $1.type }
+            remoteError = nil
             lastRefreshTime = Date()
         } catch {
+            print("[Remote] fetch failed: \(error)")
             remoteGroups = nil
+            remoteError = error.localizedDescription
             accountUsages = []
         }
         isLoading = false
