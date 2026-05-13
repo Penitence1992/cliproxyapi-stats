@@ -98,7 +98,7 @@ struct UsageDetailView: View {
                     Divider()
 
                     ForEach(viewModel.accountUsages) { usage in
-                        UsageAccountRow(usage: usage) {
+                        UsageAccountRow(usage: usage, showRefresh: !viewModel.isRemoteMode) {
                             Task { await viewModel.refreshSingleAccount(usage.id) }
                         }
                     }
@@ -169,6 +169,7 @@ struct UsageMetric: View {
 
 struct UsageAccountRow: View {
     let usage: AccountUsage
+    var showRefresh: Bool = true
     var onRefresh: (() -> Void)?
 
     var body: some View {
@@ -184,7 +185,7 @@ struct UsageAccountRow: View {
                         TagView(text: usage.planType, color: .teal)
                     }
 
-                    if let onRefresh {
+                    if showRefresh, let onRefresh {
                         Button(action: onRefresh) {
                             Image(systemName: "arrow.clockwise")
                                 .font(.system(size: 10))
@@ -271,58 +272,135 @@ struct SettingsDetailView: View {
 
     var body: some View {
         Form {
-            Section("通用") {
+            Section("数据源") {
                 HStack {
-                    Text("账号目录")
+                    Text("模式")
                     Spacer()
-                    Text(viewModel.accountsDirectory)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                        .frame(maxWidth: 200)
-
-                    Button("选择...") {
-                        selectDirectory()
+                    Picker("", selection: $viewModel.dataSourceMode) {
+                        Text("本地").tag("local")
+                        Text("远程").tag("remote")
                     }
-                    .controlSize(.small)
+                    .pickerStyle(.segmented)
+                    .frame(maxWidth: 160)
                 }
 
-                HStack {
-                    Text("刷新间隔")
-                    Spacer()
-                    HStack(spacing: 4) {
-                        ForEach(intervals, id: \.seconds) { interval in
-                            Button(interval.label) {
-                                viewModel.refreshInterval = interval.seconds
-                            }
-                            .buttonStyle(.plain)
+                if viewModel.isRemoteMode {
+                    HStack {
+                        Text("服务地址")
+                        Spacer()
+                        TextField("https://...", text: $viewModel.remoteServiceURL)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(maxWidth: 320)
+                    }
+                }
+            }
+
+            if !viewModel.isRemoteMode {
+                Section("通用") {
+                    HStack {
+                        Text("账号目录")
+                        Spacer()
+                        Text(viewModel.accountsDirectory)
                             .font(.caption)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .background(
-                                viewModel.refreshInterval == interval.seconds
-                                    ? Color.accentColor
-                                    : Color.gray.opacity(0.2)
-                            )
-                            .foregroundStyle(
-                                viewModel.refreshInterval == interval.seconds
-                                    ? .white
-                                    : .primary
-                            )
-                            .cornerRadius(6)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .frame(maxWidth: 200)
+
+                        Button("选择...") {
+                            selectDirectory()
+                        }
+                        .controlSize(.small)
+                    }
+
+                    HStack {
+                        Text("刷新间隔")
+                        Spacer()
+                        HStack(spacing: 4) {
+                            ForEach(intervals, id: \.seconds) { interval in
+                                Button(interval.label) {
+                                    viewModel.refreshInterval = interval.seconds
+                                }
+                                .buttonStyle(.plain)
+                                .font(.caption)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(
+                                    viewModel.refreshInterval == interval.seconds
+                                        ? Color.accentColor
+                                        : Color.gray.opacity(0.2)
+                                )
+                                .foregroundStyle(
+                                    viewModel.refreshInterval == interval.seconds
+                                        ? .white
+                                        : .primary
+                                )
+                                .cornerRadius(6)
+                            }
+                        }
+                    }
+
+                    Stepper(
+                        "最大并发请求：\(viewModel.maxConcurrentRequests)",
+                        value: $viewModel.maxConcurrentRequests,
+                        in: 1...50
+                    )
+                    .help("手动刷新、定时刷新和文件变化刷新都会使用这个并发上限")
+
+                    Toggle("开机自启", isOn: $viewModel.launchAtLogin)
+                }
+
+                Section("代理") {
+                    Toggle("启用 SOCKS5 代理", isOn: $viewModel.proxyEnabled)
+
+                    if viewModel.proxyEnabled {
+                        HStack {
+                            Text("地址")
+                            Spacer()
+                            TextField("", text: $viewModel.proxyHost)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(maxWidth: 160)
+                        }
+                        HStack {
+                            Text("端口")
+                            Spacer()
+                            TextField("", value: $viewModel.proxyPort, format: IntegerFormatStyle().grouping(.never))
+                                .textFieldStyle(.roundedBorder)
+                                .frame(maxWidth: 80)
                         }
                     }
                 }
+            } else {
+                Section("通用") {
+                    HStack {
+                        Text("刷新间隔")
+                        Spacer()
+                        HStack(spacing: 4) {
+                            ForEach(intervals, id: \.seconds) { interval in
+                                Button(interval.label) {
+                                    viewModel.refreshInterval = interval.seconds
+                                }
+                                .buttonStyle(.plain)
+                                .font(.caption)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(
+                                    viewModel.refreshInterval == interval.seconds
+                                        ? Color.accentColor
+                                        : Color.gray.opacity(0.2)
+                                )
+                                .foregroundStyle(
+                                    viewModel.refreshInterval == interval.seconds
+                                        ? .white
+                                        : .primary
+                                )
+                                .cornerRadius(6)
+                            }
+                        }
+                    }
 
-                Stepper(
-                    "最大并发请求：\(viewModel.maxConcurrentRequests)",
-                    value: $viewModel.maxConcurrentRequests,
-                    in: 1...50
-                )
-                .help("手动刷新、定时刷新和文件变化刷新都会使用这个并发上限")
-
-                Toggle("开机自启", isOn: $viewModel.launchAtLogin)
+                    Toggle("开机自启", isOn: $viewModel.launchAtLogin)
+                }
             }
 
             Section("菜单栏") {
@@ -341,27 +419,6 @@ struct SettingsDetailView: View {
                         }
                         .pickerStyle(.menu)
                         .frame(maxWidth: 120)
-                    }
-                }
-            }
-
-            Section("代理") {
-                Toggle("启用 SOCKS5 代理", isOn: $viewModel.proxyEnabled)
-
-                if viewModel.proxyEnabled {
-                    HStack {
-                        Text("地址")
-                        Spacer()
-                        TextField("", text: $viewModel.proxyHost)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(maxWidth: 160)
-                    }
-                    HStack {
-                        Text("端口")
-                        Spacer()
-                        TextField("", value: $viewModel.proxyPort, format: IntegerFormatStyle().grouping(.never))
-                            .textFieldStyle(.roundedBorder)
-                            .frame(maxWidth: 80)
                     }
                 }
             }

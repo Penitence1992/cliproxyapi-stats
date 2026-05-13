@@ -8,6 +8,7 @@ final class AppViewModel: ObservableObject {
     @Published var accountUsages: [AccountUsage] = []
     @Published var isLoading = false
     @Published var lastRefreshTime: Date?
+    @Published var remoteGroups: [GroupSummary]?
 
     @AppStorage("accountsDirectory") var accountsDirectory = "~/.cliproxyapi-stats/accounts"
     @AppStorage("refreshInterval") var refreshInterval = 300 {
@@ -29,9 +30,12 @@ final class AppViewModel: ObservableObject {
     @AppStorage("proxyPort") var proxyPort = 1080 {
         didSet { applyProxy() }
     }
+    @AppStorage("dataSourceMode") var dataSourceMode = "local"
+    @AppStorage("remoteServiceURL") var remoteServiceURL = ""
 
     private let accountLoader = AccountLoader()
     private let usageService = UsageService()
+    private let remoteService = RemoteService()
     private var fileWatcher: FileWatcher?
     private var timerCancellable: AnyCancellable?
     private var fileWatcherDebounceTask: Task<Void, Never>?
@@ -40,7 +44,10 @@ final class AppViewModel: ObservableObject {
 
     // MARK: - Computed Properties
 
+    var isRemoteMode: Bool { dataSourceMode == "remote" }
+
     var groupSummaries: [GroupSummary] {
+        if isRemoteMode, let remoteGroups { return remoteGroups }
         let grouped = Dictionary(grouping: accountUsages, by: \.type)
         return grouped.map { GroupSummary(type: $0.key, usages: $0.value, weeklyExhaustedZeroes5H: weeklyExhaustedZeroes5H) }
             .sorted { $0.type < $1.type }
@@ -81,7 +88,7 @@ final class AppViewModel: ObservableObject {
         guard !hasStarted else { return }
         hasStarted = true
         applyProxy()
-        setupFileWatcher()
+        if !isRemoteMode { setupFileWatcher() }
         startTimer()
         Task { await refresh() }
     }
@@ -99,10 +106,11 @@ final class AppViewModel: ObservableObject {
     // MARK: - Refresh
 
     var hasFailedAccounts: Bool {
-        accountUsages.contains { $0.error != nil }
+        !isRemoteMode && accountUsages.contains { $0.error != nil }
     }
 
     func refreshFailed() async {
+        guard !isRemoteMode else { return }
         let failedIds = accountUsages.compactMap { $0.error != nil ? $0.id : nil }
         guard !failedIds.isEmpty else { return }
 
@@ -136,6 +144,37 @@ final class AppViewModel: ObservableObject {
 
     func refresh() async {
         isLoading = true
+        if isRemoteMode {
+            await refreshRemote()
+        } else {
+            await refreshLocal()
+        }
+    }
+
+    private func refreshRemote() async {
+        let url = remoteServiceURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !url.isEmpty else {
+            accountUsages = []
+            remoteGroups = nil
+            isLoading = false
+            return
+        }
+
+        do {
+            let response = try await remoteService.fetch(url: url)
+            accountUsages = response.accounts.map { AccountUsage(remote: $0) }
+                .sorted { $0.email < $1.email }
+            remoteGroups = response.groups.map { GroupSummary(remoteGroup: $0) }
+                .sorted { $0.type < $1.type }
+            lastRefreshTime = Date()
+        } catch {
+            remoteGroups = nil
+            accountUsages = []
+        }
+        isLoading = false
+    }
+
+    private func refreshLocal() async {
         let accounts = accountLoader.loadAccounts(from: accountsDirectory)
         let sortedAccounts = accounts.sorted { $0.email < $1.email }
 
@@ -152,6 +191,7 @@ final class AppViewModel: ObservableObject {
     }
 
     func refreshSingleAccount(_ usageId: String) async {
+        guard !isRemoteMode else { return }
         let accounts = accountLoader.loadAccounts(from: accountsDirectory)
         guard let account = accounts.first(where: { "\($0.email)|\($0.type)" == usageId }) else {
             if let idx = accountUsages.firstIndex(where: { $0.id == usageId }) {

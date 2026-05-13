@@ -85,6 +85,30 @@ struct AccountUsage: Identifiable, Sendable {
         self.isLoading = true
     }
 
+    init(remote: RemoteAccount) {
+        self.id = remote.id
+        self.email = remote.email
+        self.type = remote.type
+        self.planType = remote.planType
+        self.primaryUsedPercent = remote.primaryUsedPercent
+        self.secondaryUsedPercent = remote.secondaryUsedPercent
+        self.primaryResetTime = Self.formatResetSeconds(remote.primaryResetAfterSeconds)
+        self.secondaryResetTime = remote.secondaryResetAfterSeconds.map { Self.formatResetSeconds($0) }
+        self.codeReviewUsedPercent = nil
+        self.limitReached = remote.limitReached
+        self.error = remote.status == "active" ? nil : remote.status
+        self.isLoading = false
+    }
+
+    private static func formatResetSeconds(_ seconds: Int) -> String {
+        let days = seconds / 86400
+        let hours = (seconds % 86400) / 3600
+        let minutes = (seconds % 3600) / 60
+        if days > 0 { return "\(days)d\(hours)h" }
+        if hours > 0 { return "\(hours)h\(minutes)m" }
+        return "\(minutes)m"
+    }
+
     init(loadingId: String, email: String, type: String) {
         self.id = loadingId
         self.email = email
@@ -108,6 +132,13 @@ struct GroupSummary: Identifiable, Sendable {
     let avgSecondaryRemaining: Int?
 
     var id: String { type }
+
+    init(remoteGroup: RemoteGroup) {
+        self.type = remoteGroup.type
+        self.accountCount = remoteGroup.accountCount
+        self.avgPrimaryRemaining = remoteGroup.avgPrimaryRemainingPercent
+        self.avgSecondaryRemaining = remoteGroup.avgSecondaryRemainingPercent
+    }
 
     init(type: String, usages: [AccountUsage], weeklyExhaustedZeroes5H: Bool = true) {
         self.type = type

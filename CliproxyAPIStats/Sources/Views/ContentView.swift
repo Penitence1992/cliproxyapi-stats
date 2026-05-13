@@ -14,7 +14,7 @@ struct ContentView: View {
                     Divider().padding(.horizontal)
                     AccountListSection(
                         usages: viewModel.accountUsages,
-                        onRefreshAccount: { id in
+                        onRefreshAccount: viewModel.isRemoteMode ? nil : { id in
                             Task { await viewModel.refreshSingleAccount(id) }
                         }
                     )
