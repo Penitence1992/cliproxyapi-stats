@@ -50,7 +50,6 @@ final class AppViewModel: ObservableObject {
     var isRemoteMode: Bool { dataSourceMode == "remote" }
 
     var groupSummaries: [GroupSummary] {
-        if isRemoteMode, let remoteGroups { return remoteGroups }
         let grouped = Dictionary(grouping: accountUsages, by: \.type)
         return grouped.map { GroupSummary(type: $0.key, usages: $0.value, weeklyExhaustedZeroes5H: weeklyExhaustedZeroes5H) }
             .sorted { $0.type < $1.type }

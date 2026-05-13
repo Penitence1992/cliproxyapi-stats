@@ -28,14 +28,14 @@ struct AccountListSection: View {
         }
 
         var groups: [AccountUsageGroup] = []
-        if !suspectedBanned.isEmpty {
-            groups.append(AccountUsageGroup(title: "*疑似封禁*", usages: suspectedBanned))
-        }
         if !regular.isEmpty {
             groups.append(AccountUsageGroup(title: "非 Free 账号", usages: regular))
         }
         if !free.isEmpty {
             groups.append(AccountUsageGroup(title: "Free 账号", usages: free))
+        }
+        if !suspectedBanned.isEmpty {
+            groups.append(AccountUsageGroup(title: "*疑似封禁*", usages: suspectedBanned))
         }
         return groups
     }
