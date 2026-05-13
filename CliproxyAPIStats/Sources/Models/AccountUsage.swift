@@ -22,7 +22,7 @@ struct AccountUsage: Identifiable, Sendable {
         planType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "free"
     }
     var isSuspectedBanned: Bool {
-        error == "HTTP 401"
+        error == "HTTP 401" || error == "suspected_banned"
     }
 
     init(account: Account, usage: UsageResponse) {
@@ -130,6 +130,7 @@ struct GroupSummary: Identifiable, Sendable {
     let accountCount: Int
     let avgPrimaryRemaining: Int
     let avgSecondaryRemaining: Int?
+    let categoryCounts: [(label: String, count: Int, color: String)]
 
     var id: String { type }
 
@@ -138,11 +139,35 @@ struct GroupSummary: Identifiable, Sendable {
         self.accountCount = remoteGroup.accountCount
         self.avgPrimaryRemaining = remoteGroup.avgPrimaryRemainingPercent
         self.avgSecondaryRemaining = remoteGroup.avgSecondaryRemainingPercent
+        self.categoryCounts = []
     }
 
     init(type: String, usages: [AccountUsage], weeklyExhaustedZeroes5H: Bool = true) {
         self.type = type
         self.accountCount = usages.count
+
+        // Build category counts
+        var counts: [String: Int] = [:]
+        for usage in usages {
+            if usage.isSuspectedBanned {
+                counts["ban", default: 0] += 1
+            } else if usage.isFreePlan {
+                counts["free", default: 0] += 1
+            } else {
+                counts[usage.planType.lowercased(), default: 0] += 1
+            }
+        }
+        let order = ["plus", "pro", "team", "lite", "free", "ban"]
+        var cats: [(label: String, count: Int, color: String)] = []
+        for key in order {
+            if let c = counts[key] {
+                cats.append((label: key, count: c, color: Self.colorForCategory(key)))
+            }
+        }
+        for (key, c) in counts where !order.contains(key) {
+            cats.append((label: key, count: c, color: "secondary"))
+        }
+        self.categoryCounts = cats
 
         let validUsages = usages.filter { $0.error == nil && !$0.isLoading }
 
@@ -162,6 +187,16 @@ struct GroupSummary: Identifiable, Sendable {
             self.avgSecondaryRemaining = secondaryValues.isEmpty
                 ? nil
                 : secondaryValues.reduce(0, +) / secondaryValues.count
+        }
+    }
+
+    private static func colorForCategory(_ cat: String) -> String {
+        switch cat {
+        case "plus", "team", "pro": return "blue"
+        case "lite": return "orange"
+        case "free": return "gray"
+        case "ban": return "red"
+        default: return "secondary"
         }
     }
 }

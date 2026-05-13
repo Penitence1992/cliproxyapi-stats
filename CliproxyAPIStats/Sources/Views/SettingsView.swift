@@ -142,6 +142,20 @@ struct UsageGroupCard: View {
                 Spacer()
             }
 
+            if !summary.categoryCounts.isEmpty {
+                HStack(spacing: 6) {
+                    ForEach(summary.categoryCounts, id: \.label) { cat in
+                        Text("\(cat.label) \(cat.count)")
+                            .font(.system(size: 10))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(colorFromString(cat.color).opacity(0.15))
+                            .foregroundStyle(colorFromString(cat.color))
+                            .cornerRadius(4)
+                    }
+                }
+            }
+
             HStack(spacing: 24) {
                 UsageMetric(label: "5H 剩余", percent: summary.avgPrimaryRemaining)
 
@@ -153,6 +167,16 @@ struct UsageGroupCard: View {
         .padding(14)
         .background(.quaternary.opacity(0.3))
         .cornerRadius(10)
+    }
+}
+
+private func colorFromString(_ name: String) -> Color {
+    switch name {
+    case "blue": return .blue
+    case "orange": return .orange
+    case "red": return .red
+    case "gray": return .gray
+    default: return .secondary
     }
 }
 
