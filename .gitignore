@@ -8,3 +8,8 @@ mockup/
 *.app/
 *.zip
 .claude/
+.claude.json
+.serena/
+swift-generated-sources/
+TemporaryDirectory.*/
+_Users_*.lock

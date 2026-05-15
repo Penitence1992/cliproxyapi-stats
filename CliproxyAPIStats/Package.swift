@@ -12,6 +12,11 @@ let package = Package(
             name: "CliproxyAPIStats",
             path: "Sources",
             exclude: ["Resources"]
+        ),
+        .testTarget(
+            name: "CliproxyAPIStatsTests",
+            dependencies: ["CliproxyAPIStats"],
+            path: "Tests/CliproxyAPIStatsTests"
         )
     ]
 )
