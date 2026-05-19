@@ -86,7 +86,7 @@ struct AccountUsage: Identifiable, Sendable {
     }
 
     init(remote: RemoteAccount) {
-        self.id = "\(remote.email)|\(remote.type)"
+        self.id = "\(remote.id)|\(remote.email)|\(remote.type)"
         self.email = remote.email
         self.type = remote.type
         self.planType = remote.planType
